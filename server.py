@@ -71,13 +71,35 @@ def sigint_handler(sig, frame):
 # Register the signal handler
 signal.signal(signal.SIGINT, sigint_handler)
 
+def populateDbPasswords(inputFile):
+    pwdDb = {}
+    for line in inputFile:
+        tokens = line.split(' ')
+        urn = tokens[0]
+        pwd = tokens[1].strip('\n')
+        pwdDb[urn] = pwd
+    return pwdDb
+        
+def populateDbSecrets(inputFile):
+    secDb = {}
+    for line in inputFile:
+        tokens = line.split(' ')
+        urn = tokens[0]
+        secret = tokens[1].strip('\n')
+        secDb[urn] = secret
+    return secDb
 
 # TODO: put your application logic here!
 # Read login credentials for all the users
 # Read secret data of all the users
+filePasswords = open('passwords.txt', 'r')
+fileSecrets = open('secrets.txt', 'r')
 
+pwdDb = populateDbPasswords(filePasswords)
+secDb = populateDbSecrets(fileSecrets)
 
-
+print(pwdDb)
+print(secDb)
 
 ### Loop to accept incoming HTTP connections and respond.
 while True:
@@ -93,7 +115,8 @@ while True:
 
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
-
+    if(headers[0] == "P"):
+        pass
     # You need to set the variables:
     # (1) `html_content_to_send` => add the HTML content you'd
     # like to send to the client.
