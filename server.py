@@ -89,6 +89,20 @@ def populateDbSecrets(inputFile):
         secDb[urn] = secret
     return secDb
 
+def parseBody(body):
+    begin = 0
+    end = 0
+    urn = ""
+    for i, char in enumerate(body):
+        if(char == '='):
+            begin = i + 1
+        if(char == '&'):
+            urn = body[begin: i]
+    pwd = body[begin:]
+    return urn , pwd
+            
+            
+
 # TODO: put your application logic here!
 # Read login credentials for all the users
 # Read secret data of all the users
@@ -97,9 +111,6 @@ fileSecrets = open('secrets.txt', 'r')
 
 pwdDb = populateDbPasswords(filePasswords)
 secDb = populateDbSecrets(fileSecrets)
-
-print(pwdDb)
-print(secDb)
 
 ### Loop to accept incoming HTTP connections and respond.
 while True:
@@ -116,12 +127,21 @@ while True:
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
     if(headers[0] == "P"):
-        pass
+        urn, pwd = parseBody(body)
+        success = False
+        if(pwd != ""):
+            if(urn in pwdDb):
+                if(pwd == pwdDb[urn]):
+                    html_content_to_send = success_page + secDb[urn]
+                    success = True
+        if(not success):
+            html_content_to_send = bad_creds_page
+    else:
     # You need to set the variables:
     # (1) `html_content_to_send` => add the HTML content you'd
     # like to send to the client.
     # Right now, we just send the default login page.
-    html_content_to_send = login_page
+        html_content_to_send = login_page
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
