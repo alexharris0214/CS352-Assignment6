@@ -136,8 +136,24 @@ while True:
             stored_cookie = head[14:].strip('\n')
 
     if stored_cookie:
+        # Does new password check
+        if(headers[0] == "P"):
+            print("BODY:: ", body, " : ", body[0])
+            if(body.strip('\n') == "password=new"):
+                print("NEW PASSOWRD???")
+                html_content_to_send = new_password_page
+            elif body[:12].strip('\n') == "NewPassword=":
+                new_password = body[12:]
+                username_here = cookiesDb.get(stored_cookie)
+                pwdDb[username_here] = new_password
+                for i in pwdDb:
+                    print("U: ", i, " P ", pwdDb[i])
+                html_content_to_send = success_page
+        # Checks if a password was returned in post
+        # elif body and body[0][:12] == "NewPassword=":
+        #     print("NEW PASSWORD")
         # Checks if the cookie is valid
-        if stored_cookie in cookiesDb:
+        elif stored_cookie in cookiesDb:
             urn = cookiesDb[stored_cookie]
             html_content_to_send = success_page + secDb[urn]
         else:
