@@ -111,6 +111,7 @@ fileSecrets = open('secrets.txt', 'r')
 
 pwdDb = populateDbPasswords(filePasswords)
 secDb = populateDbSecrets(fileSecrets)
+cookiesDb = {}
 
 ### Loop to accept incoming HTTP connections and respond.
 while True:
@@ -123,25 +124,30 @@ while True:
     body = '' if len(header_body) == 1 else header_body[1]
     print_value('headers', headers)
     print_value('entity body', body)
-
+    headers_to_send = ''
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
     if(headers[0] == "P"):
-        urn, pwd = parseBody(body)
-        success = False
-        if(pwd != ""):
-            if(urn in pwdDb):
-                if(pwd == pwdDb[urn]):
-                    html_content_to_send = success_page + secDb[urn]
-                    success = True
-        if(not success):
-            html_content_to_send = bad_creds_page
+        if(body[0][0] == "p"):
+            html_content_to_send = new_password_page
+        elif(body[0][0] == "a"):
+            html_content_to_send = login_page
+        else:
+            urn, pwd = parseBody(body)
+            success = False
+            if(pwd != ""):
+                if(urn in pwdDb):
+                    if(pwd == pwdDb[urn]):
+                        html_content_to_send = success_page + secDb[urn]
+                        cookieID = random.getrandbits(64)
+                        cookiesDb[cookieID] = urn
+                        headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
+                        success = True
+            if(not success):
+                html_content_to_send = bad_creds_page
     else:
-    # You need to set the variables:
-    # (1) `html_content_to_send` => add the HTML content you'd
-    # like to send to the client.
-    # Right now, we just send the default login page.
         html_content_to_send = login_page
+            
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
@@ -150,7 +156,6 @@ while True:
     # (2) `headers_to_send` => add any additional headers
     # you'd like to send the client?
     # Right now, we don't send any extra headers.
-    headers_to_send = ''
 
     # Construct and send the final response
     response  = 'HTTP/1.1 200 OK\r\n'
