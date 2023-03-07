@@ -127,26 +127,44 @@ while True:
     headers_to_send = ''
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
-    if(headers[0] == "P"):
-        if(body[0][0] == "p"):
-            html_content_to_send = new_password_page
-        elif(body[0][0] == "a"):
-            html_content_to_send = login_page
+    # Checks for cookie header
+    split_headers = headers.split('\n')
+    stored_cookie = ""
+    for head in split_headers:
+        # print("Count: ", head[0:6])
+        if head[0:6] == "Cookie":
+            stored_cookie = head[14:].strip('\n')
+
+    if stored_cookie:
+        # Checks if the cookie is valid
+        if stored_cookie in cookiesDb:
+            urn = cookiesDb[stored_cookie]
+            html_content_to_send = success_page + secDb[urn]
         else:
-            urn, pwd = parseBody(body)
-            success = False
-            if(pwd != ""):
-                if(urn in pwdDb):
-                    if(pwd == pwdDb[urn]):
-                        html_content_to_send = success_page + secDb[urn]
-                        cookieID = random.getrandbits(64)
-                        cookiesDb[cookieID] = urn
-                        headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
-                        success = True
-            if(not success):
-                html_content_to_send = bad_creds_page
+            # Cookie header present, but invalid cookie
+            html_content_to_send = bad_creds_page
     else:
-        html_content_to_send = login_page
+        # No cookie stored
+        if(headers[0] == "P"):
+            if(body[0][0] == "p"):
+                html_content_to_send = new_password_page
+            elif(body[0][0] == "a"):
+                html_content_to_send = login_page
+            else:
+                urn, pwd = parseBody(body)
+                success = False
+                if(pwd != ""):
+                    if(urn in pwdDb):
+                        if(pwd == pwdDb[urn]):
+                            html_content_to_send = success_page + secDb[urn]
+                            cookieID = random.getrandbits(64)
+                            cookiesDb[str(cookieID)] = urn
+                            headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
+                            success = True
+                if(not success):
+                    html_content_to_send = bad_creds_page
+        else:
+            html_content_to_send = login_page
             
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
