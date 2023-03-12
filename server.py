@@ -100,6 +100,15 @@ def parseBody(body):
             urn = body[begin: i]
     pwd = body[begin:]
     return urn , pwd
+
+def findCookies(headers):
+    split_headers = headers.split('\n')
+    stored_cookie = ""
+    for head in split_headers:
+        # print("Count: ", head[0:6])
+        if head[0:6] == "Cookie":
+            stored_cookie = head[14:].strip('\n')
+    return stored_cookie
             
             
 
@@ -125,40 +134,46 @@ while True:
     print_value('headers', headers)
     print_value('entity body', body)
     headers_to_send = ''
+    html_content_to_send = login_page
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
     # Checks for cookie header
-    split_headers = headers.split('\n')
-    stored_cookie = ""
-    for head in split_headers:
-        # print("Count: ", head[0:6])
-        if head[0:6] == "Cookie":
-            stored_cookie = head[14:].strip('\n')
 
-    if stored_cookie:
-        # Does new password check
-        if(headers[0] == "P"):
-            print("BODY:: ", body, " : ", body[0])
-            if(body.strip('\n') == "password=new"):
-                print("NEW PASSOWRD???")
-                html_content_to_send = new_password_page
-            elif body[:12].strip('\n') == "NewPassword=":
-                new_password = body[12:]
-                username_here = cookiesDb.get(stored_cookie)
-                pwdDb[username_here] = new_password
-                for i in pwdDb:
-                    print("U: ", i, " P ", pwdDb[i])
-                html_content_to_send = success_page
-        # Checks if a password was returned in post
-        # elif body and body[0][:12] == "NewPassword=":
-        #     print("NEW PASSWORD")
-        # Checks if the cookie is valid
-        elif stored_cookie in cookiesDb:
-            urn = cookiesDb[stored_cookie]
-            html_content_to_send = success_page + secDb[urn]
+    cookieID = findCookies(headers)
+    if cookieID:
+        if(cookieID in cookiesDb):
+            usr = cookiesDb[cookieID]
+            if(headers[0] == "P"):
+                if(body[0][0] == "p"):
+                    print('here')
+                    html_content_to_send = new_password_page
+                elif(body[0][0] == "a"):
+                    print('here')
+                    html_content_to_send = login_page
+                elif body[:12].strip('\n') == "NewPassword=":
+                    new_password = body[12:]
+                    username_here = cookiesDb.get(stored_cookie)
+                    pwdDb[username_here] = new_password
+                    html_content_to_send = success_page
+            else:
+                html_content_to_send = success_page + secDb[usr]
         else:
-            # Cookie header present, but invalid cookie
-            html_content_to_send = bad_creds_page
+            urn, pwd = parseBody(body)
+            success = False
+            if(pwd != ""):
+                if(urn in pwdDb):
+                    if(pwd == pwdDb[urn]):
+                        html_content_to_send = success_page + secDb[urn]
+                        cookieID = random.getrandbits(64)
+                        cookiesDb[str(cookieID)] = urn
+                        headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
+                        success = True
+            if(not success):
+                html_content_to_send = bad_creds_page
+                    
+            else:
+                # Cookie header present, but invalid cookie
+                html_content_to_send = success_page + secDb[urn]
     else:
         # No cookie stored
         if(headers[0] == "P"):
