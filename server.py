@@ -121,12 +121,14 @@ fileSecrets = open('secrets.txt', 'r')
 pwdDb = populateDbPasswords(filePasswords)
 secDb = populateDbSecrets(fileSecrets)
 cookiesDb = {}
+counter = 0
 
 ### Loop to accept incoming HTTP connections and respond.
 while True:
     client, addr = sock.accept()
     req = client.recv(1024)
-
+    print("COUNTER: ", counter)
+    counter+=1
     # Let's pick the headers and entity body apart
     header_body = req.split('\r\n\r\n')
     headers = header_body[0]
@@ -139,63 +141,72 @@ while True:
     # Parse headers and body and perform various actions
     # Checks for cookie header
 
+    # First should check for new password or logout
+    # Then if cookie is present or invalid 
+    # Then user pass sucess / failure if else
+    # Basic case
+
     cookieID = findCookies(headers)
-    if cookieID:
-        if(cookieID in cookiesDb):
-            usr = cookiesDb[cookieID]
-            if(headers[0] == "P"):
-                if(body[0][0] == "p"):
-                    print('here')
-                    html_content_to_send = new_password_page
-                elif(body[0][0] == "a"):
-                    print('here')
-                    html_content_to_send = login_page
-                elif body[:12].strip('\n') == "NewPassword=":
-                    new_password = body[12:]
-                    username_here = cookiesDb.get(stored_cookie)
-                    pwdDb[username_here] = new_password
-                    html_content_to_send = success_page
-            else:
+
+    if(headers[0] == "P" and body[0][0] == "p"):
+        
+        # Requested new password page
+        print('Requested reset pasword page')
+        html_content_to_send = new_password_page
+    elif(headers[0] == "P" and body[0][0] == "a"):
+        # Check if this is the base case? if so then combine if headers = P with body[0][0] = p and have elif with new password case
+        print("\n\n\n LOGOUT CASE TEST 12:::\n\n\n")
+        headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '; expires=Thu, 01 Jan 1970 00:00:00 GMT\r\n'
+        print(headers_to_send)
+        html_content_to_send = login_page
+    elif headers[0] == "P" and body[:12].strip('\n') == "NewPassword=":
+        # New password request was posted
+        new_password = body[12:]
+        username_here = cookiesDb.get(cookieID)
+        pwdDb[username_here] = new_password
+        html_content_to_send = success_page
+        print("\n\n\n HIT Change password CASE TEST 10:::\n\n\n")
+        print(pwdDb)
+    else:
+        if cookieID:
+            if (cookieID in cookiesDb):
+                # Valid cookie
+                usr = cookiesDb[cookieID]
                 html_content_to_send = success_page + secDb[usr]
+                print("\n\n\n HIT Valid cookie CASE TEST 6:::\n\n\n")
+                # Check for case 7 how can you enter a bad username or password and have a valid cookie without it auto login, does it mean cookie is only checked when login button is hit?
+                # Same for case 6 and 8
+            else:
+                # Invalid cookie case
+                html_content_to_send = bad_creds_page
+                print("\n\n\n HIT Bad credentials CASE TEST 9:::\n\n\n")
         else:
+            # No cookie id
             urn, pwd = parseBody(body)
-            success = False
-            if(pwd != ""):
+            # Check for case 5, with missing username and has password and check if it gives bad credentials
+            if(urn != "" or pwd != ""):
                 if(urn in pwdDb):
                     if(pwd == pwdDb[urn]):
+                        # On successful login
                         html_content_to_send = success_page + secDb[urn]
                         cookieID = random.getrandbits(64)
                         cookiesDb[str(cookieID)] = urn
                         headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
-                        success = True
-            if(not success):
-                html_content_to_send = bad_creds_page
-                    
-            else:
-                # Cookie header present, but invalid cookie
-                html_content_to_send = success_page + secDb[urn]
-    else:
-        # No cookie stored
-        if(headers[0] == "P"):
-            if(body[0][0] == "p"):
-                html_content_to_send = new_password_page
-            elif(body[0][0] == "a"):
-                html_content_to_send = login_page
-            else:
-                urn, pwd = parseBody(body)
-                success = False
-                if(pwd != ""):
-                    if(urn in pwdDb):
-                        if(pwd == pwdDb[urn]):
-                            html_content_to_send = success_page + secDb[urn]
-                            cookieID = random.getrandbits(64)
-                            cookiesDb[str(cookieID)] = urn
-                            headers_to_send = 'Set-Cookie: token=' + str(cookieID) + '\r\n'
-                            success = True
-                if(not success):
+                        print("\n\n\n HIT Successful Login CASE TEST 2:::\n\n\n")
+                        html_content_to_send = success_page + secDb[urn]
+                    else:
+                        # Existing username with bad password
+                        html_content_to_send = bad_creds_page
+                        print("\n\n\n HIT Bad password Login CASE TEST 4:::\n\n\n")
+                else:
+                    # Non-existent username
                     html_content_to_send = bad_creds_page
-        else:
-            html_content_to_send = login_page
+                    print("\n\n\n HIT Non-existent Login CASE TEST 3:::\n\n\n")
+            else:
+                # Base case
+                print("\n\n\n HIT BASE CASE TEST 1:::\n\n\n")
+                html_content_to_send = login_page
+
             
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
